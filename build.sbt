@@ -18,10 +18,10 @@ libraryDependencies <<= scalaVersion {
     "org.apache.kafka" %% "kafka" % "0.8.1.1",
     // Algebird (used here for HyperLogLog)
     "com.twitter" %% "algebird-core" % "0.6.0",
+    // for serialization of case class
+    "com.novus" %% "salat" % "1.9.8",
     // Mongo
-    "org.reactivemongo" %% "reactivemongo" % "0.10.0",
-    // Joda (date time)
-    "joda-time" % "joda-time" % "2.3"
+    "org.reactivemongo" %% "reactivemongo" % "0.10.0"
   )
 }
 
