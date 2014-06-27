@@ -1,6 +1,8 @@
 package com.chimpler.sparkstreaminglogaggregation
 
+import com.twitter.algebird.HyperLogLogMonoid
 import kafka.serializer.{DefaultDecoder, StringDecoder}
+import org.apache.commons.io.Charsets
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
@@ -23,10 +25,24 @@ object LogAggregator extends App {
   )
 
   val messages = KafkaUtils.createStream[String, ImpressionLog, StringDecoder, ImpressionLogDecoder](streamingContext, kafkaParams, topics, StorageLevel.MEMORY_AND_DISK)
-  messages.foreachRDD(aggregateLogs(_))
+  // messages is an RDD[(topic, ImpressionLog)]
+  messages.map(_._2).foreachRDD(aggregateLogs(_))
   streamingContext.start()
 
-  def aggregateLogs(rdd: RDD[(String, ImpressionLog)]) {
-    println(rdd.collect().size)
+  def aggregateLogs(logRdd: RDD[ImpressionLog]) {
+
+    // group by geo and compute count, uniques and average bid
+    logRdd.groupBy(l => (l.publisher, l.geo)).foreach {
+      case ((publisher, geo), logs) =>
+        val imps = logs.size
+
+        val hll = new HyperLogLogMonoid(12)
+        val estimatedUniques = logs.map(log => hll(log.cookie.getBytes(Charsets.UTF_8))).reduce(_ + _).estimatedSize
+
+        val averageBid = logs.map(_.bid).reduce(_ + _) / imps
+
+        val aggregationLog = AggregationLog(0L, publisher, geo, imps, estimatedUniques.toInt, averageBid)
+        println("==> " + aggregationLog)
+    }
   }
 }

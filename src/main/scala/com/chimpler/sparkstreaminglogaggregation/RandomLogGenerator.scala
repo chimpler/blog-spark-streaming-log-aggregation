@@ -42,7 +42,7 @@ object RandomLogGenerator extends App {
     val publisher = publishers(random.nextInt(NumPublishers))
     val advertiser = advertisers(random.nextInt(NumAdvertisers))
     val website = s"website_${random.nextInt(100)}.com"
-    val cookie = s"cookie_${random.nextInt(100)}"
+    val cookie = s"cookie_${random.nextInt(10000)}"
     val geo = geos(random.nextInt(geos.size))
     val bid = math.abs(random.nextDouble()) % 1
     val log = ImpressionLog(timestamp, publisher, advertiser, website, geo, bid, cookie)
