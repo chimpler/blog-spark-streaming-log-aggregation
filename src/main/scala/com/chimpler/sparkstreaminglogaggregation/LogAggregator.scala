@@ -47,7 +47,7 @@ object LogAggregator extends App {
   lazy val hyperLogLog = new HyperLogLogMonoid(12)
 
   // we filter out non resolved geo (unknown) and map (pub, geo) -> AggLog that will be reduced
-  val logsByPubGeo = messages.map(_._2).filter("unknown" !=).map(log => PublisherGeoKey(log.publisher, log.geo) -> AggregationLog(
+  val logsByPubGeo = messages.map(_._2).filter(_.geo != Constants.UnknownGeo).map(log => PublisherGeoKey(log.publisher, log.geo) -> AggregationLog(
     log.timestamp,
     log.bid,
     imps = 1,
@@ -56,10 +56,13 @@ object LogAggregator extends App {
 
   // Reduce to generate imps, uniques, sumBid per pub and geo
   import org.apache.spark.streaming.StreamingContext._
-  val aggLogs = logsByPubGeo.reduceByKey(reduceAggregationLogs)
+  val aggLogs = logsByPubGeo.reduceByKeyAndWindow(reduceAggregationLogs, BatchDuration)
 
   // Store in MongoDB
   aggLogs.foreachRDD(saveLogs(_))
+
+  // start rolling!
+  streamingContext.start()
 
   private def saveLogs(logRdd: RDD[(PublisherGeoKey, AggregationLog)]) {
     val logs = logRdd.map {
@@ -70,9 +73,6 @@ object LogAggregator extends App {
     // save in MongoDB
     logs.foreach(collection.save(_))
   }
-
-  // start rolling!
-  streamingContext.start()
 
   private def reduceAggregationLogs(aggLog1: AggregationLog, aggLog2: AggregationLog) = {
     aggLog1.copy(

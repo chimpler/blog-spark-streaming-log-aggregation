@@ -23,7 +23,7 @@ libraryDependencies <<= scalaVersion {
     // MongoDB
     "org.reactivemongo" %% "reactivemongo" % "0.10.0",
     // Joda dates for Scala
-    "com.github.nscala-time" %% "scala-time" % "1.2.0"
+    "com.github.nscala-time" %% "nscala-time" % "1.2.0"
   )
 }
 
