@@ -1,18 +1,34 @@
 package com.chimpler.sparkstreaminglogaggregation
 
+import com.github.nscala_time.time.Imports._
 import com.twitter.algebird.HyperLogLogMonoid
-import kafka.serializer.{DefaultDecoder, StringDecoder}
+import kafka.serializer.StringDecoder
 import org.apache.commons.io.Charsets
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.kafka.KafkaUtils
 import org.apache.spark.streaming.{Seconds, StreamingContext}
+import reactivemongo.api._
+import reactivemongo.api.collections.default.BSONCollection
+import reactivemongo.bson._
+import MongoConversions._
+
+import scala.concurrent.ExecutionContext.Implicits.global
 
 object LogAggregator extends App {
+  val BatchDuration = Seconds(10)
+
+  val driver = new MongoDriver
+  val connection = driver.connection(List("localhost"))
+
+  implicit val aggHandler = Macros.handler[AggregationResult]
+
+  val db = connection("adlogdb")
+  val collection = db[BSONCollection]("impsPerPubGeo")
 
   val sparkContext = new SparkContext("local[4]", "logAggregator")
-  val streamingContext = new StreamingContext(sparkContext, Seconds(1))
+  val streamingContext = new StreamingContext(sparkContext, BatchDuration)
 
   val kafkaParams = Map(
     "zookeeper.connect" -> "localhost:2181",
@@ -21,28 +37,49 @@ object LogAggregator extends App {
   )
 
   val topics = Map(
-    "adnetwork-topic" -> 4
+    Constants.KafkaTopic -> 1
   )
 
-  val messages = KafkaUtils.createStream[String, ImpressionLog, StringDecoder, ImpressionLogDecoder](streamingContext, kafkaParams, topics, StorageLevel.MEMORY_AND_DISK)
   // messages is an RDD[(topic, ImpressionLog)]
-  messages.map(_._2).foreachRDD(aggregateLogs(_))
+  val messages = KafkaUtils.createStream[String, ImpressionLog, StringDecoder, ImpressionLogDecoder](streamingContext, kafkaParams, topics, StorageLevel.MEMORY_AND_DISK)
+
+  // to count uniques
+  lazy val hyperLogLog = new HyperLogLogMonoid(12)
+
+  // we filter out non resolved geo (unknown) and map (pub, geo) -> AggLog that will be reduced
+  val logsByPubGeo = messages.map(_._2).filter("unknown" !=).map(log => PublisherGeoKey(log.publisher, log.geo) -> AggregationLog(
+    log.timestamp,
+    log.bid,
+    imps = 1,
+    hyperLogLog(log.cookie.getBytes(Charsets.UTF_8))
+  ))
+
+  // Reduce to generate imps, uniques, sumBid per pub and geo
+  import org.apache.spark.streaming.StreamingContext._
+  val aggLogs = logsByPubGeo.reduceByKey(reduceAggregationLogs)
+
+  // Store in MongoDB
+  aggLogs.foreachRDD(saveLogs(_))
+
+  private def saveLogs(logRdd: RDD[(PublisherGeoKey, AggregationLog)]) {
+    val logs = logRdd.map {
+      case (PublisherGeoKey(pub, geo), AggregationLog(timestamp, sumBids, imps, uniquesHll)) =>
+        AggregationResult(new DateTime(timestamp), pub, geo, imps, uniquesHll.estimatedSize.toInt, sumBids / imps)
+    }.collect()
+
+    // save in MongoDB
+    logs.foreach(collection.save(_))
+  }
+
+  // start rolling!
   streamingContext.start()
 
-  def aggregateLogs(logRdd: RDD[ImpressionLog]) {
-
-    // group by geo and compute count, uniques and average bid
-    logRdd.groupBy(l => (l.publisher, l.geo)).foreach {
-      case ((publisher, geo), logs) =>
-        val imps = logs.size
-
-        val hll = new HyperLogLogMonoid(12)
-        val estimatedUniques = logs.map(log => hll(log.cookie.getBytes(Charsets.UTF_8))).reduce(_ + _).estimatedSize
-
-        val averageBid = logs.map(_.bid).reduce(_ + _) / imps
-
-        val aggregationLog = AggregationLog(0L, publisher, geo, imps, estimatedUniques.toInt, averageBid)
-        println("==> " + aggregationLog)
-    }
+  private def reduceAggregationLogs(aggLog1: AggregationLog, aggLog2: AggregationLog) = {
+    aggLog1.copy(
+      timestamp = math.min(aggLog1.timestamp, aggLog2.timestamp),
+      sumBid = aggLog1.sumBid + aggLog2.sumBid,
+      imps = aggLog1.imps + aggLog2.imps,
+      uniqueHll = aggLog1.uniqueHll + aggLog2.uniqueHll
+    )
   }
 }

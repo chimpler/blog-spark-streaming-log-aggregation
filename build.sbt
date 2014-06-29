@@ -20,8 +20,10 @@ libraryDependencies <<= scalaVersion {
     "com.twitter" %% "algebird-core" % "0.6.0",
     // for serialization of case class
     "com.novus" %% "salat" % "1.9.8",
-    // Mongo
-    "org.reactivemongo" %% "reactivemongo" % "0.10.0"
+    // MongoDB
+    "org.reactivemongo" %% "reactivemongo" % "0.10.0",
+    // Joda dates for Scala
+    "com.github.nscala-time" %% "scala-time" % "1.2.0"
   )
 }
 
