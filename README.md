@@ -2,14 +2,13 @@ Simple example consuming an adserver logs stream from Kafka.
 
 More information on our blog: http://chimpler.wordpress.com/2014/06/29/implementing-a-real-time-data-pipeline-with-spark-streaming
 
-Prerequisite:
 In order to run our example, we need to install the followings:
 
-	[Scala 2.10+](http://www.scala-lang.org/)
-	[SBT](http://www.scala-sbt.org/)
-	[Apache Zookeeper](http://zookeeper.apache.org/)
-	[Apache Kafka](http://kafka.apache.org/)
-	[MongoDB](http://www.mongodb.org/)
+* [Scala 2.10+](http://www.scala-lang.org/)
+* [SBT](http://www.scala-sbt.org/)
+* [Apache Zookeeper](http://zookeeper.apache.org/)
+* [Apache Kafka](http://kafka.apache.org/)
+* [MongoDB](http://www.mongodb.org/)
 
 
 Building the examples:
