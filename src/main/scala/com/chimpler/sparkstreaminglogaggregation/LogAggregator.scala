@@ -29,7 +29,7 @@ object LogAggregator extends App {
 
   val sparkContext = new SparkContext("local[4]", "logAggregator")
 
-  // we discretize the stream in BatchDuration second intervals
+  // we discretize the stream in BatchDuration seconds intervals
   val streamingContext = new StreamingContext(sparkContext, BatchDuration)
 
   val kafkaParams = Map(
@@ -50,10 +50,10 @@ object LogAggregator extends App {
 
   // we filter out non resolved geo (unknown) and map (pub, geo) -> AggLog that will be reduced
   val logsByPubGeo = messages.map(_._2).filter(_.geo != Constants.UnknownGeo).map(log => PublisherGeoKey(log.publisher, log.geo) -> AggregationLog(
-    log.timestamp,
-    log.bid,
+    timestamp = log.timestamp,
+    sumBids = log.bid,
     imps = 1,
-    hyperLogLog(log.cookie.getBytes(Charsets.UTF_8))
+    uniquesHll = hyperLogLog(log.cookie.getBytes(Charsets.UTF_8))
   ))
 
   // Reduce to generate imps, uniques, sumBid per pub and geo per interval of BatchDuration seconds
@@ -79,9 +79,9 @@ object LogAggregator extends App {
   private def reduceAggregationLogs(aggLog1: AggregationLog, aggLog2: AggregationLog) = {
     aggLog1.copy(
       timestamp = math.min(aggLog1.timestamp, aggLog2.timestamp),
-      sumBid = aggLog1.sumBid + aggLog2.sumBid,
+      sumBids = aggLog1.sumBids + aggLog2.sumBids,
       imps = aggLog1.imps + aggLog2.imps,
-      uniqueHll = aggLog1.uniqueHll + aggLog2.uniqueHll
+      uniquesHll = aggLog1.uniquesHll + aggLog2.uniquesHll
     )
   }
 }
