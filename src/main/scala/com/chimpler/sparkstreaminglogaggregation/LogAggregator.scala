@@ -28,6 +28,8 @@ object LogAggregator extends App {
   val collection = db[BSONCollection]("impsPerPubGeo")
 
   val sparkContext = new SparkContext("local[4]", "logAggregator")
+
+  // we discretize the stream in BatchDuration second intervals
   val streamingContext = new StreamingContext(sparkContext, BatchDuration)
 
   val kafkaParams = Map(
@@ -54,7 +56,7 @@ object LogAggregator extends App {
     hyperLogLog(log.cookie.getBytes(Charsets.UTF_8))
   ))
 
-  // Reduce to generate imps, uniques, sumBid per pub and geo
+  // Reduce to generate imps, uniques, sumBid per pub and geo per interval of BatchDuration seconds
   import org.apache.spark.streaming.StreamingContext._
   val aggLogs = logsByPubGeo.reduceByKeyAndWindow(reduceAggregationLogs, BatchDuration)
 
