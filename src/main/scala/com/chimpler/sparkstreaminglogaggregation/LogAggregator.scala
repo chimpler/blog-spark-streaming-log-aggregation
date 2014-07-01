@@ -49,12 +49,17 @@ object LogAggregator extends App {
   lazy val hyperLogLog = new HyperLogLogMonoid(12)
 
   // we filter out non resolved geo (unknown) and map (pub, geo) -> AggLog that will be reduced
-  val logsByPubGeo = messages.map(_._2).filter(_.geo != Constants.UnknownGeo).map(log => PublisherGeoKey(log.publisher, log.geo) -> AggregationLog(
-    timestamp = log.timestamp,
-    sumBids = log.bid,
-    imps = 1,
-    uniquesHll = hyperLogLog(log.cookie.getBytes(Charsets.UTF_8))
-  ))
+  val logsByPubGeo = messages.map(_._2).filter(_.geo != Constants.UnknownGeo).map {
+    log =>
+      val key = PublisherGeoKey(log.publisher, log.geo)
+      val agg = AggregationLog(
+        timestamp = log.timestamp,
+        sumBids = log.bid,
+        imps = 1,
+        uniquesHll = hyperLogLog(log.cookie.getBytes(Charsets.UTF_8))
+      )
+      (key, agg)
+  }
 
   // Reduce to generate imps, uniques, sumBid per pub and geo per interval of BatchDuration seconds
   import org.apache.spark.streaming.StreamingContext._
