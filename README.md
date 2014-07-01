@@ -1,6 +1,6 @@
 Simple example consuming an adserver logs stream from Kafka.
 
-More information on our blog: http://chimpler.wordpress.com/2014/06/29/implementing-a-real-time-data-pipeline-with-spark-streaming
+More information on our blog: http://chimpler.wordpress.com/2014/07/01/implementing-a-real-time-data-pipeline-with-spark-streaming/
 
 In order to run our example, we need to install the followings:
 
@@ -29,11 +29,12 @@ Start Kafka:
     
 On one window, run the aggregator:
 
-    $ target/pack/aggregator
+    $ target/pack/bin/aggregator
 
 On the other one, run the adserver log random generator:
 
-    $ target/pack/generator
+    $ target/pack/bin/generator
+    
 You can also see the messages that are sent using the Kafka console consumer:
 
     $ kafka-console-consumer.sh --topic adnetwork-topic --zookeeper localhost:2181
