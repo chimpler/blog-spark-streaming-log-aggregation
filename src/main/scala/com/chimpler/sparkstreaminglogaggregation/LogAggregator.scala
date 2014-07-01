@@ -42,7 +42,7 @@ object LogAggregator extends App {
     Constants.KafkaTopic -> 1
   )
 
-  // messages is an RDD[(topic, ImpressionLog)]
+  // stream of (topic, ImpressionLog)
   val messages = KafkaUtils.createStream[String, ImpressionLog, StringDecoder, ImpressionLogDecoder](streamingContext, kafkaParams, topics, StorageLevel.MEMORY_AND_DISK)
 
   // to count uniques

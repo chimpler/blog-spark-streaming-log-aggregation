@@ -30,6 +30,6 @@ libraryDependencies <<= scalaVersion {
 packSettings
 
 packMain := Map(
-  "publisher" -> "com.chimpler.sparkstreaminglogaggregation.RandomLogGenerator",
-  "aggregator" -> "com.chimpler.sparkstreaminglogaggregation.Aggregator"
+  "generator" -> "com.chimpler.sparkstreaminglogaggregation.RandomLogGenerator",
+  "aggregator" -> "com.chimpler.sparkstreaminglogaggregation.LogAggregator"
 )
