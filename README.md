@@ -26,6 +26,9 @@ Start Zookeeper:
 Start Kafka:
 
     $ kafka-server-start.sh config/kafka-server1.properties
+
+Run MongoDB:
+    $ sudo mongod
     
 On one window, run the aggregator:
 

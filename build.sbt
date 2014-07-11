@@ -27,6 +27,8 @@ libraryDependencies <<= scalaVersion {
   )
 }
 
+resolvers += "typesafe repo" at " http://repo.typesafe.com/typesafe/releases/"
+
 packSettings
 
 packMain := Map(
